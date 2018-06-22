@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.demo.mapper.ProdMapper">
+
+
+    <select id="testProd1"  parameterType="map" statementType="CALLABLE">
+        {
+          call prod1(
+            #{param1},
+            #{param2}
+          )
+        }
+    </select>
+
+    <!--参数类型带日期类型, 注意日期类型必采购要用Date, 而不是datetime, 在编译运行的时候会报错的
+    mode的默认值为in, 可以不写， jdbcType也可以默认不写，在存储过程调用时会自动根据需要转化，但是最好还是写上-->
+    <select id="testProd2"  parameterType="map" statementType="CALLABLE">
+        {
+        call prod2(
+        #{param1, mode=IN, jdbcType=VARCHAR},
+        #{param2, mode=IN, jdbcType=DOUBLE},
+        #{param3, mode=IN, jdbcType=DATE}
+        )
+        }
+    </select>
+
+
+    <!--返回参数能过map.get("param3")获取， 注意数据类型定义的时候没有INT，而是Integer-->
+    <select id="testProd3"  parameterType="map" statementType="CALLABLE">
+        {
+        call prod3(
+        #{param1, mode=IN, jdbcType=VARCHAR},
+        #{param2, mode=IN, jdbcType=DOUBLE},
+        #{param3, mode=OUT, jdbcType=INTEGER}
+        )
+        }
+    </select>
+
+</mapper>

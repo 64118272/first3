@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.demo.mapper.UserMapper">
+    <!--开启缓存 eviction: 算法 FIFO,LRU  size 单位为个 -->
+    <!--<cache type="org.mybatis.caches.ehcache.EhcacheCache"   />-->
+    <cache type="com.demo.compont.RedisCache"/>
+
+    <!--当查询值为整型如count(*)时，只能用resultType-->
+    <resultMap id="BaseResultMap" type="user">
+        <id column="user_id" property="userId"></id>
+        <result column="name" property="name"></result>
+        <result column="reality_name" property="realityName"></result>
+        <result column="user_create_time" property="userCreateTime"/>
+    </resultMap>
+
+    <resultMap id="getUserAndBidsByIdRM" type="user" extends="BaseResultMap">
+        <collection property="bidList" ofType="bid">
+            <id column="bid_id" property="bidId"></id>
+            <result column="title" property="title"></result>
+            <result column="amount" property="amount"></result>
+            <result column="user_id" property="userId"></result>
+        </collection>
+    </resultMap>
+
+    <!--同时查询user, bid, bill-->
+    <resultMap id="getUserAndBidsAndBillsByIdRM" type="user" extends="BaseResultMap">
+        <collection property="bidList" ofType="bid">
+            <id column="bid_id" property="bidId"></id>
+            <result column="title" property="title"></result>
+            <result column="amount" property="amount"></result>
+            <result column="user_id" property="userId"></result>
+
+            <!--billList-->
+            <collection property="billList" ofType="bill">
+                <id column="bill_id" property="billId"/>
+                <result column="bid_id" property="bidId"/>
+                <result column="period" property="period"/>
+                <result column="bill_name" property="billName"/>
+            </collection>
+        </collection>
+    </resultMap>
+
+    <resultMap id="selectRoleByUserRM" type="user" extends="BaseResultMap">
+        <collection property="roleList" ofType="role">
+            <id column="role_id" property="roleId"/>
+            <result column="role_name" property="roleName"/>
+            <result column="role_desc" property="roleDesc"/>
+        </collection>
+    </resultMap>
+
+    <sql id="all">
+        user_id, name, reality_name, user_create_time
+    </sql>
+
+    <select id="getUserById"  parameterType="int" resultMap="BaseResultMap">
+      select <include refid="all"/> from user where user_id = #{id}
+    </select>
+
+    <!--一对多查询-->
+    <select id="getUserAndBidsById" parameterType="int" resultMap="getUserAndBidsByIdRM">
+        <![CDATA[
+        select *
+        from user u, bid b
+        where u.user_id = b.user_id and u.user_id = #{id}
+        ]]>
+    </select>
+
+    <!--一对多查询-->
+    <select id="getUserAndBidsAndBillsById" parameterType="int" resultMap="getUserAndBidsAndBillsByIdRM">
+        <![CDATA[
+        SELECT *
+        FROM USER u LEFT JOIN bid b ON u.`user_id` = b.`user_id` LEFT JOIN bill bi ON b.`bid_id` = bi.`bid_id`
+        WHERE  u.user_id = #{id}
+        ]]>
+    </select>
+
+    <select id="selectRoleByUser" parameterType="int" resultMap="selectRoleByUserRM">
+        select *
+        from user u left join user_role ur on ur.user_id = u.user_id left join role r on ur.role_id = r.role_id
+        where u.user_id = #{id}
+    </select>
+
+<!--一对一查询-->
+    <resultMap id="getUserAllRE" type="user" extends="BaseResultMap">
+        <association property="userExt1" javaType="user_ext1">
+            <id column="user_id" property="userId"/>
+            <result column="id_number" property="idNumber"/>
+            <result column="sex" property="sex"/>
+        </association>
+    </resultMap>
+    <select id="getUserAll" parameterType="int" resultMap="getUserAllRE">
+        select *
+        from user u left join user_ext1 u1 on u.user_id = u1.user_id
+        where u.user_id = #{id}
+    </select>
+
+    <!--colum: 主sql查询出来的一列，select:表示子sql位置-->
+    <resultMap id="getUserByIdLazyRM" type="user" extends="BaseResultMap">
+        <collection property="bidList" column="user_id" select="com.demo.springbootmybatis.com.demo.mapper.BidMapper.getBidByUserIdLazy">
+
+        </collection>
+    </resultMap>
+    <select id="getUserByIdLazy" parameterType="int" resultMap="getUserByIdLazyRM">
+        select * from user t where t.user_id = #{userId}
+    </select>
+
+    <update id="updateUserById" parameterType="int" flushCache="true">
+        update user t
+        <set>
+            <if test="name != null">
+                t.name = #{name},
+            </if>
+
+            <if test="realityName != null">
+                t.reality_name = #{realityName},
+            </if>
+
+            <if test="userCreateTime != null">
+                t.user_create_time = #{userCrateTime}
+            </if>
+        </set>
+
+        where t.user_id = #{userId}
+    </update>
+
+    <!--keyProperty为实体类属性-->
+    <insert id="insertUser" parameterType="user" useGeneratedKeys="true" keyProperty="userId">
+        <!--<selectKey resultType="long" keyProperty="userId" order="AFTER">-->
+            <!--select last_insert_id()-->
+        <!--</selectKey>-->
+        insert into user(name, reality_name, user_create_time) values(#{name}, #{realityName}, #{userCreateTime})
+    </insert>
+
+    <select id="findByPage" resultMap="BaseResultMap">
+        select
+        <include refid="all" />
+        from user
+    </select>
+</mapper>
